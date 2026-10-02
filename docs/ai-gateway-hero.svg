@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 620" role="img" aria-labelledby="title desc">
+  <title id="title">AI Gateway for Pi</title>
+  <desc id="desc">A glowing gateway connects Pi to OpenAI Responses and Anthropic Messages transports.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#080d1c"/><stop offset="0.55" stop-color="#111a34"/><stop offset="1" stop-color="#24103d"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#66e3ff" stop-opacity="0"/><stop offset="0.5" stop-color="#66e3ff" stop-opacity="0.9"/><stop offset="1" stop-color="#b995ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#75efff"/><stop offset="0.52" stop-color="#8a9dff"/><stop offset="1" stop-color="#e29bff"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#202c51" stop-opacity="0.95"/><stop offset="1" stop-color="#121a35" stop-opacity="0.95"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#92a7ff" stroke-opacity="0.07"/></pattern>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <rect width="1600" height="620" rx="34" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1598" height="618" rx="33" fill="url(#grid)" stroke="#8394d8" stroke-opacity="0.22"/>
+  <circle cx="1190" cy="250" r="240" fill="#7d6cff" fill-opacity="0.12" filter="url(#blur)"/>
+  <circle cx="1410" cy="500" r="190" fill="#45ddff" fill-opacity="0.09" filter="url(#blur)"/>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, sans-serif">
+    <text x="90" y="108" fill="#aab8e8" font-size="20" font-weight="700" letter-spacing="5">PI • PROVIDER EXTENSION</text>
+    <text x="90" y="190" fill="#f5f7ff" font-size="66" font-weight="800" letter-spacing="-2">One gateway.</text>
+    <text x="90" y="262" fill="url(#accent)" font-size="66" font-weight="800" letter-spacing="-2">Two native transports.</text>
+    <text x="94" y="320" fill="#bec9e8" font-size="24">Auto-discovered models for Pi, with routing that stays out of your way.</text>
+
+    <g transform="translate(92 386)"><rect width="220" height="52" rx="26" fill="#172443" stroke="#65dff9" stroke-opacity="0.55"/><circle cx="28" cy="26" r="7" fill="#6deaff"/><text x="50" y="34" fill="#e1faff" font-size="16" font-weight="700" textLength="150" lengthAdjust="spacingAndGlyphs">OPENAI RESPONSES</text></g>
+    <g transform="translate(328 386)"><rect width="246" height="52" rx="26" fill="#221d47" stroke="#c08dff" stroke-opacity="0.6"/><circle cx="28" cy="26" r="7" fill="#d59aff"/><text x="50" y="34" fill="#f3e7ff" font-size="16" font-weight="700" textLength="176" lengthAdjust="spacingAndGlyphs">ANTHROPIC MESSAGES</text></g>
+
+    <g transform="translate(1050 75)">
+      <path d="M240 82L140 210L240 338L340 210Z" fill="#101b39" stroke="url(#accent)" stroke-width="3"/>
+      <path d="M240 122L177 210L240 298L303 210Z" fill="#182754" stroke="#76eaff" stroke-opacity="0.6"/>
+      <circle cx="240" cy="210" r="58" fill="#4b48aa" fill-opacity="0.35" filter="url(#soft-glow)"/>
+      <circle cx="240" cy="210" r="42" fill="none" stroke="#8ceeff" stroke-width="3" stroke-dasharray="5 9"/>
+      <path d="M220 226L240 177L260 226L240 243Z" fill="url(#accent)"/>
+      <text x="240" y="382" text-anchor="middle" fill="#ffffff" font-size="25" font-weight="800" letter-spacing="4">AI GATEWAY</text>
+      <text x="240" y="414" text-anchor="middle" fill="#aebce8" font-size="17">discover • classify • stream</text>
+    </g>
+
+    <g fill="none" stroke="url(#beam)" stroke-width="3" stroke-linecap="round">
+      <path d="M910 230H1050"/><path d="M910 230C1000 230 1000 162 1050 162" stroke-dasharray="9 12"/><path d="M910 230C1000 230 1000 298 1050 298" stroke-dasharray="9 12"/><path d="M1390 162H1510"/><path d="M1390 298H1510"/>
+    </g>
+    <g fill="#79eaff"><circle cx="910" cy="230" r="5"/><circle cx="1050" cy="162" r="5"/><circle cx="1050" cy="298" r="5"/><circle cx="1510" cy="162" r="5"/><circle cx="1510" cy="298" r="5"/></g>
+
+    <g transform="translate(1320 112)"><rect width="222" height="100" rx="18" fill="url(#card)" stroke="#6fe9ff" stroke-opacity="0.55"/><text x="22" y="34" fill="#7feaff" font-size="14" font-weight="800" letter-spacing="2">TRANSPORT 01</text><text x="22" y="63" fill="#f3f7ff" font-size="18" font-weight="800" textLength="174" lengthAdjust="spacingAndGlyphs">openai-responses</text><text x="22" y="84" fill="#b6c4e8" font-size="15">/v1/responses</text></g>
+    <g transform="translate(1320 248)"><rect width="222" height="100" rx="18" fill="url(#card)" stroke="#ce9aff" stroke-opacity="0.6"/><text x="22" y="34" fill="#dba6ff" font-size="14" font-weight="800" letter-spacing="2">TRANSPORT 02</text><text x="22" y="63" fill="#f8f2ff" font-size="18" font-weight="800" textLength="174" lengthAdjust="spacingAndGlyphs">anthropic-messages</text><text x="22" y="84" fill="#d6c5ee" font-size="15">/v1/messages</text></g>
+
+    <g transform="translate(1015 505)"><rect width="520" height="62" rx="16" fill="#0c142c" fill-opacity="0.88" stroke="#7184bf" stroke-opacity="0.32"/><text x="28" y="39" fill="#cad5f5" font-size="17"><tspan fill="#7feaff" font-weight="800">/v1/models</tspan><tspan>  →  metadata  →  model registry</tspan></text></g>
+  </g>
+</svg>

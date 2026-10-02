@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" role="img" aria-labelledby="title desc">
+  <title id="title">AI Gateway discovery and routing flow</title>
+  <desc id="desc">Pi loads configuration and credentials, the extension discovers models, and each model is routed to the appropriate native transport.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#1b1235"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5ee8ff"/><stop offset="1" stop-color="#8ea5ff"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#8b9be2" stroke-opacity="0.06"/></pattern>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#78eaff"/></marker>
+    <marker id="arrow-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#dca1ff"/></marker>
+  </defs>
+
+  <rect width="1600" height="600" rx="32" fill="url(#bg)"/><rect x="1" y="1" width="1598" height="598" rx="31" fill="url(#grid)" stroke="#8291d0" stroke-opacity="0.25"/>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, sans-serif">
+    <text x="70" y="74" fill="#f5f7ff" font-size="30" font-weight="800">What happens when Pi starts a session?</text>
+    <text x="70" y="108" fill="#aebce7" font-size="18">Configuration and catalog discovery stay separate from the request transport.</text>
+
+    <g transform="translate(70 178)"><rect width="270" height="260" rx="22" fill="#151e3b" stroke="#6880c8" stroke-opacity="0.58"/><circle cx="44" cy="44" r="20" fill="#233b77" stroke="#78eaff" stroke-width="2"/><path d="M36 44H52M44 36V52" stroke="#9cf2ff" stroke-width="3" stroke-linecap="round"/><text x="80" y="51" fill="#ffffff" font-size="21" font-weight="800">Pi + config</text><text x="28" y="104" fill="#7feaff" font-size="16" font-weight="800">INPUTS</text><text x="28" y="137" fill="#d8e1ff" font-size="18">models.json</text><text x="28" y="168" fill="#d8e1ff" font-size="18">auth.json</text><text x="28" y="199" fill="#d8e1ff" font-size="18">environment</text><text x="28" y="235" fill="#8f9fc9" font-size="15">base URLs • keys • overrides</text></g>
+
+    <path d="M365 308H475" fill="none" stroke="#78eaff" stroke-width="3" marker-end="url(#arrow-cyan)"/><text x="373" y="286" fill="#8fa0d5" font-size="14" font-weight="700">REGISTER</text>
+
+    <g transform="translate(500 150)"><rect width="390" height="315" rx="24" fill="#191c43" stroke="url(#cyan)" stroke-width="2"/><circle cx="61" cy="61" r="29" fill="#31458f" fill-opacity="0.6" filter="url(#glow)"/><path d="M61 42L72 60L61 79L50 60Z" fill="url(#cyan)"/><text x="110" y="68" fill="#ffffff" font-size="24" font-weight="800">AI Gateway extension</text><text x="32" y="128" fill="#7feaff" font-size="16" font-weight="800" letter-spacing="1">DISCOVER</text><text x="32" y="160" fill="#dce6ff" font-size="18">GET /v1/models</text><text x="32" y="191" fill="#aebce7" font-size="16">Bearer + x-api-key fallback</text><path d="M32 220H358" stroke="#6273ae" stroke-opacity="0.45"/><text x="32" y="254" fill="#dca1ff" font-size="16" font-weight="800" letter-spacing="1">CLASSIFY</text><text x="32" y="286" fill="#dce6ff" font-size="18">api / apis / registry match</text></g>
+
+    <path d="M915 252C1010 252 1000 188 1085 188" fill="none" stroke="#78eaff" stroke-width="3" marker-end="url(#arrow-cyan)"/><path d="M915 358C1010 358 1000 422 1085 422" fill="none" stroke="#dca1ff" stroke-width="3" marker-end="url(#arrow-pink)"/>
+
+    <g transform="translate(1110 138)"><rect width="415" height="128" rx="22" fill="#122b43" stroke="#5ee8ff" stroke-opacity="0.72"/><text x="28" y="39" fill="#78eaff" font-size="14" font-weight="800" letter-spacing="2">PROVIDER 01</text><text x="28" y="72" fill="#f6fcff" font-size="23" font-weight="800">ai-gateway</text><text x="28" y="101" fill="#c9eff8" font-size="17">openai-responses  •  /v1/responses</text></g>
+    <g transform="translate(1110 372)"><rect width="415" height="128" rx="22" fill="#2b1b43" stroke="#dca1ff" stroke-opacity="0.78"/><text x="28" y="39" fill="#dfa9ff" font-size="14" font-weight="800" letter-spacing="2">PROVIDER 02</text><text x="28" y="72" fill="#fff7ff" font-size="23" font-weight="800">ai-gateway-anthropic</text><text x="28" y="101" fill="#eddafa" font-size="17">anthropic-messages  •  /v1/messages</text></g>
+
+    <g transform="translate(500 495)"><rect width="390" height="71" rx="16" fill="#0d142b" stroke="#7484bb" stroke-opacity="0.35"/><text x="195" y="28" text-anchor="middle" fill="#79eaff" font-size="14" font-weight="800">INDEPENDENT PASSES</text><text x="195" y="52" text-anchor="middle" fill="#bfcdf1" font-size="14">one can fail without hiding the other.</text></g>
+  </g>
+</svg>
