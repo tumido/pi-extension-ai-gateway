@@ -1,0 +1,27 @@
+{
+  "name": "pi-extension-ai-gateway",
+  "version": "0.1.0",
+  "description": "Pi provider extension for AI Gateway OpenAI Responses and Anthropic Messages transports",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "ai-gateway",
+    "openai-responses",
+    "anthropic-messages"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/ai-gateway-provider.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tumido/pi-extension-ai-gateway.git"
+  }
+}
+
