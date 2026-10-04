@@ -66,7 +66,7 @@ In this example, `apiKey` is a reference to the environment variable. If you use
 
 ### 4. Start Pi
 
-The extension discovers models when the session starts. A model is then available under the provider that matches its transport.
+On the first run, the extension discovers models while registering the providers, before the session starts. After Pi has cached a catalog, startup uses that local cache and the live catalog is refreshed when the session starts. A model is then available under the provider that matches its transport.
 
 Pi normally reads `models.json` and `auth.json` from `~/.pi/agent/`. Set `PI_CODING_AGENT_DIR` when your Pi configuration lives elsewhere.
 
@@ -283,7 +283,7 @@ Keep the URL roles distinct:
 
 ### Discovery is slow or flaky
 
-The two catalogs are fetched independently with a 10-second timeout during bootstrap. A failed catalog is logged and the other provider continues. Pi also keeps the last published catalog when a refresh fails.
+On a first run, the two catalogs are fetched independently during provider initialization, with a 10-second timeout per catalog. Once cached, startup does not wait for the gateway; the catalogs are refreshed when the session starts. A failed catalog is logged and Pi keeps the last published catalog.
 
 ## Local development
 

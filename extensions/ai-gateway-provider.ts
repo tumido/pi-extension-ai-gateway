@@ -649,52 +649,67 @@ function isOffline(): boolean {
 	return ["1", "true", "yes"].includes((process.env.PI_OFFLINE ?? "").toLowerCase());
 }
 
+async function hasStoredCatalog(providerId: string): Promise<boolean> {
+	try {
+		const agentDir = nonEmptyString(process.env.PI_CODING_AGENT_DIR) ?? join(homedir(), ".pi", "agent");
+		const contents = await readFile(join(agentDir, "models-store.json"), "utf8");
+		const root = asRecord(JSON.parse(contents));
+		const provider = asRecord(root?.[providerId]);
+		return Array.isArray(provider?.models) && provider.models.length > 0;
+	} catch {
+		return false;
+	}
+}
+
+const eagerlyLoadedProviders = new Set<string>();
+const freshlyPersistedProviders = new Set<string>();
+
 async function bootstrapModels(): Promise<BootstrapModels> {
-	const responsesConfigured = await readModelsJsonProvider(PROVIDER_ID);
-	const anthropicConfigured = await readModelsJsonProvider(ANTHROPIC_PROVIDER_ID);
-	const responsesBaseUrl = await resolveBaseUrl(PROVIDER_ID);
-	const anthropicBaseUrl = await resolveBaseUrl(ANTHROPIC_PROVIDER_ID);
+	const [responsesConfigured, anthropicConfigured, responsesCached, anthropicCached] = await Promise.all([
+		readModelsJsonProvider(PROVIDER_ID),
+		readModelsJsonProvider(ANTHROPIC_PROVIDER_ID),
+		hasStoredCatalog(PROVIDER_ID),
+		hasStoredCatalog(ANTHROPIC_PROVIDER_ID),
+	]);
+	const [responsesBaseUrl, anthropicBaseUrl] = await Promise.all([
+		resolveBaseUrl(PROVIDER_ID),
+		resolveBaseUrl(ANTHROPIC_PROVIDER_ID),
+	]);
 	const configuredResponses = configuredModelDefinitions(responsesConfigured, responsesBaseUrl, RESPONSES_API, includeOpenAIModel);
 	const configuredAnthropic = configuredModelDefinitions(anthropicConfigured, anthropicBaseUrl, ANTHROPIC_API, includeAnthropicModel);
-	const empty = { responses: configuredResponses, anthropic: configuredAnthropic };
-	if (isOffline()) return empty;
+	if (isOffline()) return { responses: configuredResponses, anthropic: configuredAnthropic };
 
-	const responsesApiKey = await configuredApiKey(PROVIDER_ID, responsesConfigured);
-	if (!responsesApiKey) return empty;
-
-	try {
-		const anthropicApiKey = (await configuredApiKey(ANTHROPIC_PROVIDER_ID, anthropicConfigured)) ?? responsesApiKey;
-		const [responsesResult, anthropicResult] = await Promise.allSettled([
-			fetchCatalog(responsesBaseUrl, responsesApiKey, AbortSignal.timeout(10_000), RESPONSES_API),
-			fetchCatalog(anthropicBaseUrl, anthropicApiKey, AbortSignal.timeout(10_000), ANTHROPIC_API),
-		]);
-		const responsesCatalog = responsesResult.status === "fulfilled" ? responsesResult.value : undefined;
-		const anthropicCatalog = anthropicResult.status === "fulfilled" ? anthropicResult.value : undefined;
-		for (const result of [responsesResult, anthropicResult]) {
-			if (result.status === "rejected" && !(result.reason instanceof Error && result.reason.name === "AbortError")) {
-				const message = result.reason instanceof Error ? result.reason.message : "unknown error";
-				console.warn(`[${PROVIDER_ID}] model discovery failed: ${message}`);
+	const [responsesApiKey, anthropicConfiguredKey] = await Promise.all([
+		configuredApiKey(PROVIDER_ID, responsesConfigured),
+		configuredApiKey(ANTHROPIC_PROVIDER_ID, anthropicConfigured),
+	]);
+	const anthropicApiKey = anthropicConfiguredKey ?? responsesApiKey;
+	const discover = async (
+		providerId: string,
+		cached: boolean,
+		baseUrl: string,
+		apiKey: string | undefined,
+		api: Api,
+		configured: ChatProviderModelConfig[],
+		filter: ModelIdFilter,
+	): Promise<ChatProviderModelConfig[]> => {
+		if (cached || !apiKey) return configured;
+		try {
+			const catalog = await fetchCatalog(baseUrl, apiKey, AbortSignal.timeout(10_000), api);
+			eagerlyLoadedProviders.add(providerId);
+			return mergeModels(configured, modelsFromCatalog(catalog.payload, catalog.baseUrl, api, filter));
+		} catch (error) {
+			if (!(error instanceof Error && error.name === "AbortError")) {
+				console.warn(`[${PROVIDER_ID}] model discovery failed: ${error instanceof Error ? error.message : "unknown error"}`);
 			}
+			return configured;
 		}
-		return {
-			responses: mergeModels(
-				configuredResponses,
-				responsesCatalog
-					? modelsFromCatalog(responsesCatalog.payload, responsesCatalog.baseUrl, RESPONSES_API, includeOpenAIModel)
-					: [],
-			),
-			anthropic: mergeModels(
-				configuredAnthropic,
-				anthropicCatalog
-					? modelsFromCatalog(anthropicCatalog.payload, anthropicCatalog.baseUrl, ANTHROPIC_API, includeAnthropicModel)
-					: [],
-			),
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : "unknown error";
-		console.warn(`[${PROVIDER_ID}] initial model discovery failed: ${message}`);
-		return empty;
-	}
+	};
+	const [responses, anthropic] = await Promise.all([
+		discover(PROVIDER_ID, responsesCached, responsesBaseUrl, responsesApiKey, RESPONSES_API, configuredResponses, includeOpenAIModel),
+		discover(ANTHROPIC_PROVIDER_ID, anthropicCached, anthropicBaseUrl, anthropicApiKey, ANTHROPIC_API, configuredAnthropic, includeAnthropicModel),
+	]);
+	return { responses, anthropic };
 }
 
 let initialResponsesModels: ChatProviderModelConfig[] = [];
@@ -725,7 +740,21 @@ async function refreshProviderModels(
 	const baseUrl = await resolveBaseUrl(providerId);
 	const configuredModels = configuredModelDefinitions(configured, baseUrl, api, filter);
 	const stored = storedModelDefinitions(context, providerId, api, filter, baseUrl);
-	if (!context.allowNetwork || context.signal.aborted) return mergeModels(configuredModels, stored, initial);
+	const availableModels = mergeModels(configuredModels, stored, initial);
+
+	// The first run already fetched this catalog during extension loading. Hand
+	// it to Pi's store now instead of issuing the same request a second time.
+	if (eagerlyLoadedProviders.delete(providerId)) {
+		await context.publish({
+			persist: {
+				models: persistedModels(availableModels, providerId, api, baseUrl),
+			},
+		});
+		freshlyPersistedProviders.add(providerId);
+		return availableModels;
+	}
+	if (freshlyPersistedProviders.delete(providerId)) return availableModels;
+	if (!context.allowNetwork || context.signal.aborted) return availableModels;
 
 	const apiKey = credentialApiKey(context) ?? (await configuredApiKey(providerId, configured));
 	const catalog = await fetchCatalog(baseUrl, apiKey, context.signal, api);
@@ -778,6 +807,7 @@ export default async function aiGatewayProvider(pi: ExtensionAPI): Promise<void>
 	const anthropicConfigured = await readModelsJsonProvider(ANTHROPIC_PROVIDER_ID);
 	const responsesBaseUrl = await resolveBaseUrl(PROVIDER_ID);
 	const anthropicBaseUrl = await resolveBaseUrl(ANTHROPIC_PROVIDER_ID);
+
 	const responsesApiKey = responsesConfigured?.apiKey ?? `$${API_KEY_ENV_VAR}`;
 	const anthropicApiKey = anthropicConfigured?.apiKey ?? responsesApiKey;
 	pi.registerProvider(PROVIDER_ID, {
@@ -802,11 +832,10 @@ export default async function aiGatewayProvider(pi: ExtensionAPI): Promise<void>
 		refreshModels: refreshAnthropicModels,
 	});
 	pi.on("session_start", async (_event, context) => {
-		// Include models.json overlays and any provider catalogs already loaded by
-		// Pi. Gateway metadata stays authoritative when supplied, while missing
-		// fields can inherit from an exact internal model-ID match.
+		// On later starts Pi restores the cached catalog during its local refresh;
+		// this network refresh updates it without delaying provider registration.
 		rememberModelReferences(context.modelRegistry.getAll(), "runtime");
-		if (["1", "true", "yes"].includes((process.env.PI_OFFLINE ?? "").toLowerCase())) return;
+		if (isOffline()) return;
 		try {
 			await context.modelRegistry.refresh({
 				providers: [PROVIDER_ID, ANTHROPIC_PROVIDER_ID],
