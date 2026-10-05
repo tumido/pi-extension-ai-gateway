@@ -31,6 +31,7 @@ import type {
 	SimpleStreamOptions,
 	TranscriptContext,
 } from "@earendil-works/pi-ai";
+import { mergeModelRefresh } from "./model-refresh.ts";
 
 export const PROVIDER_ID = "ai-gateway";
 export const ANTHROPIC_PROVIDER_ID = "ai-gateway-anthropic";
@@ -489,14 +490,13 @@ function mergeModels(...sources: ChatProviderModelConfig[][]): ChatProviderModel
 	return [...models.values()];
 }
 
-function storedModelDefinitions(
-	context: RefreshModelsContext,
+function storedModelDefinitionsFromEntries(
+	stored: readonly unknown[],
 	providerId: string,
 	api: Api,
 	filter: ModelIdFilter,
 	defaultBaseUrl: string,
 ): ChatProviderModelConfig[] {
-	const stored = context.stored?.models ?? [];
 	const seen = new Set<string>();
 	const definitions: ChatProviderModelConfig[] = [];
 
@@ -514,6 +514,16 @@ function storedModelDefinitions(
 	}
 
 	return definitions;
+}
+
+function storedModelDefinitions(
+	context: RefreshModelsContext,
+	providerId: string,
+	api: Api,
+	filter: ModelIdFilter,
+	defaultBaseUrl: string,
+): ChatProviderModelConfig[] {
+	return storedModelDefinitionsFromEntries(context.stored?.models ?? [], providerId, api, filter, defaultBaseUrl);
 }
 
 function catalogEntries(payload: unknown): unknown[] {
@@ -649,15 +659,18 @@ function isOffline(): boolean {
 	return ["1", "true", "yes"].includes((process.env.PI_OFFLINE ?? "").toLowerCase());
 }
 
-async function hasStoredCatalog(providerId: string): Promise<boolean> {
+async function readStoredCatalog(providerId: string): Promise<JsonRecord[]> {
 	try {
 		const agentDir = nonEmptyString(process.env.PI_CODING_AGENT_DIR) ?? join(homedir(), ".pi", "agent");
 		const contents = await readFile(join(agentDir, "models-store.json"), "utf8");
 		const root = asRecord(JSON.parse(contents));
 		const provider = asRecord(root?.[providerId]);
-		return Array.isArray(provider?.models) && provider.models.length > 0;
+		const models = provider?.models;
+		return Array.isArray(models)
+			? models.map((model) => asRecord(model)).filter((model): model is JsonRecord => model !== undefined)
+			: [];
 	} catch {
-		return false;
+		return [];
 	}
 }
 
@@ -665,11 +678,11 @@ const eagerlyLoadedProviders = new Set<string>();
 const freshlyPersistedProviders = new Set<string>();
 
 async function bootstrapModels(): Promise<BootstrapModels> {
-	const [responsesConfigured, anthropicConfigured, responsesCached, anthropicCached] = await Promise.all([
+	const [responsesConfigured, anthropicConfigured, responsesStored, anthropicStored] = await Promise.all([
 		readModelsJsonProvider(PROVIDER_ID),
 		readModelsJsonProvider(ANTHROPIC_PROVIDER_ID),
-		hasStoredCatalog(PROVIDER_ID),
-		hasStoredCatalog(ANTHROPIC_PROVIDER_ID),
+		readStoredCatalog(PROVIDER_ID),
+		readStoredCatalog(ANTHROPIC_PROVIDER_ID),
 	]);
 	const [responsesBaseUrl, anthropicBaseUrl] = await Promise.all([
 		resolveBaseUrl(PROVIDER_ID),
@@ -677,7 +690,14 @@ async function bootstrapModels(): Promise<BootstrapModels> {
 	]);
 	const configuredResponses = configuredModelDefinitions(responsesConfigured, responsesBaseUrl, RESPONSES_API, includeOpenAIModel);
 	const configuredAnthropic = configuredModelDefinitions(anthropicConfigured, anthropicBaseUrl, ANTHROPIC_API, includeAnthropicModel);
-	if (isOffline()) return { responses: configuredResponses, anthropic: configuredAnthropic };
+	const cachedResponses = storedModelDefinitionsFromEntries(responsesStored, PROVIDER_ID, RESPONSES_API, includeOpenAIModel, responsesBaseUrl);
+	const cachedAnthropic = storedModelDefinitionsFromEntries(anthropicStored, ANTHROPIC_PROVIDER_ID, ANTHROPIC_API, includeAnthropicModel, anthropicBaseUrl);
+	// Seed registration with the cached catalog synchronously. Pi may start
+	// availability checks and initial model selection while the provider's
+	// cache-only refresh is still completing.
+	const initialResponses = mergeModelRefresh(configuredResponses, cachedResponses, []);
+	const initialAnthropic = mergeModelRefresh(configuredAnthropic, cachedAnthropic, []);
+	if (isOffline()) return { responses: initialResponses, anthropic: initialAnthropic };
 
 	const [responsesApiKey, anthropicConfiguredKey] = await Promise.all([
 		configuredApiKey(PROVIDER_ID, responsesConfigured),
@@ -706,8 +726,8 @@ async function bootstrapModels(): Promise<BootstrapModels> {
 		}
 	};
 	const [responses, anthropic] = await Promise.all([
-		discover(PROVIDER_ID, responsesCached, responsesBaseUrl, responsesApiKey, RESPONSES_API, configuredResponses, includeOpenAIModel),
-		discover(ANTHROPIC_PROVIDER_ID, anthropicCached, anthropicBaseUrl, anthropicApiKey, ANTHROPIC_API, configuredAnthropic, includeAnthropicModel),
+		discover(PROVIDER_ID, cachedResponses.length > 0, responsesBaseUrl, responsesApiKey, RESPONSES_API, initialResponses, includeOpenAIModel),
+		discover(ANTHROPIC_PROVIDER_ID, cachedAnthropic.length > 0, anthropicBaseUrl, anthropicApiKey, ANTHROPIC_API, initialAnthropic, includeAnthropicModel),
 	]);
 	return { responses, anthropic };
 }
@@ -758,9 +778,11 @@ async function refreshProviderModels(
 
 	const apiKey = credentialApiKey(context) ?? (await configuredApiKey(providerId, configured));
 	const catalog = await fetchCatalog(baseUrl, apiKey, context.signal, api);
-	const models = mergeModels(
+	const models = mergeModelRefresh(
 		configuredModels,
+		mergeModels(stored, initial),
 		modelsFromCatalog(catalog.payload, catalog.baseUrl, api, filter),
+		context.force !== true,
 	);
 	await context.publish({
 		persist: {

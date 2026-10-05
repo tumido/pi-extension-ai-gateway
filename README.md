@@ -149,7 +149,7 @@ When a configured URL does not end in `/v1`, discovery tries `<baseUrl>/v1/model
 
 ### Live catalogs plus explicit models
 
-Autodiscovery can only expose IDs returned by the selected catalog. Add models manually when a gateway supports a model but omits it from `/v1/models`:
+Autodiscovery merges the selected catalog with the last cached catalog during a normal refresh, so a temporarily incomplete response does not make a selected/default model disappear. Add models manually when a gateway supports a model but omits it from `/v1/models`:
 
 ```json
 {
@@ -167,7 +167,7 @@ Autodiscovery can only expose IDs returned by the selected catalog. Add models m
 }
 ```
 
-Explicit entries are merged with the live catalog. A gateway catalog entry can provide its own metadata; an exact model-ID match in Pi’s registry fills fields that are missing. The gateway still needs to accept the model ID at the selected request route—an explicit entry only makes it selectable.
+Explicit entries are merged with the live catalog and survive every refresh. A gateway catalog entry can provide its own metadata; an exact model-ID match in Pi’s registry fills fields that are missing. Fresh catalog metadata wins over cached metadata for the same ID. A forced refresh can make the remote catalog authoritative and prune cached IDs that it no longer returns. The gateway still needs to accept the model ID at the selected request route—an explicit entry only makes it selectable.
 
 ### Choose one or both transports
 
@@ -283,7 +283,7 @@ Keep the URL roles distinct:
 
 ### Discovery is slow or flaky
 
-On a first run, the two catalogs are fetched independently during provider initialization, with a 10-second timeout per catalog. Once cached, startup does not wait for the gateway; the catalogs are refreshed when the session starts. A failed catalog is logged and Pi keeps the last published catalog.
+On a first run, the two catalogs are fetched independently during provider initialization, with a 10-second timeout per catalog. Once cached, startup does not wait for the gateway; the catalogs are refreshed when the session starts. Normal refreshes keep the last cached models as a fallback when a response is incomplete; a failed catalog is logged and Pi keeps the last published catalog.
 
 ## Local development
 

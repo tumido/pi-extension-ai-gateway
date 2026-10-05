@@ -18,6 +18,9 @@
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*"
   },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
